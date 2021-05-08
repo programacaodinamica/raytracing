@@ -24,8 +24,14 @@ function backgroundcolor(dir)
 end
 
 function raycolor(ray::Ray, sphere::Sphere)
-    if hit(sphere, ray)
-        return RGB(1.0, 0.0, 0.0)
+    
+    t = hit(sphere, ray)
+    if t > 0.0
+        # intersection
+        p = rayat(ray, t)
+        normal = unitvector(p - sphere.center)
+        ncolor = 0.5 * (normal .+ 1.0)
+        return RGB(ncolor...)
     end
     
     backgroundcolor(ray.direction)
@@ -42,5 +48,5 @@ for j = 1:imheight
     end
 end
 
-save("rendered/imagem2.png", image)
+save("rendered/imagem3.png", image)
 

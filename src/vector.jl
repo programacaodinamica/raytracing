@@ -30,8 +30,11 @@ function Ray(orgn::Vec3{T}, dir::Vec3{T}) where T
     Ray{T}(orgn, dir)
 end
 
+function rayat(ray::Ray, t)
+    ray.origin + t * ray.direction
+end
 
-raio = Ray(Vec3(1.0, 2.0, 3.0), Vec3(7.0, 0.0, 0.0))
+
 
 struct Sphere{T <: AbstractFloat}
     center::Vec3{T}
@@ -48,15 +51,15 @@ end
 
 function hit(sphere::Sphere, ray::Ray)
     # bhaskara
+    oc = ray.origin - sphere.center
     a = normsquared(ray.direction)
-    oc = sphere.center - ray.origin
-    b = 2.0 * dot(ray.direction, oc)
+    halfb = dot(ray.direction, oc)
     c = normsquared(oc) - sphere.radius^2
-    discriminant = b*b - 4*a*c
+    discriminant = halfb*halfb - a*c
 
-    if discriminant <=0
-        false
+    if discriminant < 0
+        - 1.0
     else
-        true
+        (-halfb - √discriminant) / a
     end
 end
