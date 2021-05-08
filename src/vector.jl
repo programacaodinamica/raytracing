@@ -32,3 +32,31 @@ end
 
 
 raio = Ray(Vec3(1.0, 2.0, 3.0), Vec3(7.0, 0.0, 0.0))
+
+struct Sphere{T <: AbstractFloat}
+    center::Vec3{T}
+    radius::T
+
+    function Sphere{T}(c::Vec3{T}, r::T) where T
+        new(c, r)    
+    end
+end
+
+function Sphere(c::Vec3{T}, r::T) where T
+    Sphere{T}(c, r)
+end
+
+function hit(sphere::Sphere, ray::Ray)
+    # bhaskara
+    a = normsquared(ray.direction)
+    oc = sphere.center - ray.origin
+    b = 2.0 * dot(ray.direction, oc)
+    c = normsquared(oc) - sphere.radius^2
+    discriminant = b*b - 4*a*c
+
+    if discriminant <=0
+        false
+    else
+        true
+    end
+end
