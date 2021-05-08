@@ -23,14 +23,12 @@ function backgroundcolor(dir)
     (1-t)RGB(1.0, 1.0, 1.0) + t*RGB(0.5, 0.7, 1.0)
 end
 
-function raycolor(ray::Ray, sphere::Sphere)
-    
-    t = hit(sphere, ray)
-    if t > 0.0
+function raycolor(ray::Ray, scenelist::SceneList)
+    record = HitRecord()
+
+    if hit!(scenelist, ray, 0.0, Inf, record)
         # intersection
-        p = rayat(ray, t)
-        normal = unitvector(p - sphere.center)
-        ncolor = 0.5 * (normal .+ 1.0)
+        ncolor = 0.5 * (record.normal .+ 1.0)
         return RGB(ncolor...)
     end
     
@@ -38,15 +36,22 @@ function raycolor(ray::Ray, sphere::Sphere)
 end
 
 s1 = Sphere(Vec3(0.0, 0.0, -1.0), 0.5)
+bigradius = 1000.0
+floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0), bigradius)
+
+world = SceneList()
+push!(world, s1)
+push!(world, floor)
+
 for j = 1:imheight
     for i = 1:imwidth
         u = (i - 1) / (imwidth - 1)
         v = 1.0 - (j - 1) / (imheight - 1)
         dir = lowerleftcorner + u*horizontal + v*vertical - origin
         ray = Ray(origin, dir)
-        image[j, i] = raycolor(ray, s1)
+        image[j, i] = raycolor(ray, world)
     end
 end
 
-save("rendered/imagem3.png", image)
+save("rendered/imagem4.png", image)
 

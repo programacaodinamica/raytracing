@@ -1,3 +1,5 @@
+import Base.push!
+
 const Vec3{T <: Real} = Array{T, 1}
 
 function Vec3{T}(x::T, y::T, z::T) where T
@@ -34,9 +36,42 @@ function rayat(ray::Ray, t)
     ray.origin + t * ray.direction
 end
 
+abstract type SceneObject 
+end
 
+mutable struct HitRecord{T <: AbstractFloat}
+    p::Vec3{T}
+    t::T
+    normal::Vec3{T}
 
-struct Sphere{T <: AbstractFloat}
+    function HitRecord{T}(p::Vec3{T}, t::T, n::Vec3{T}) where T <: AbstractFloat
+        new(p, t, n)
+    end
+end
+
+function HitRecord(p::Vec3{T}, t::T, n::Vec3{T}) where T <: AbstractFloat
+    HitRecord{T}(p, t, n)
+end
+
+function HitRecord()
+    HitRecord(Vec3(0.0, 0.0, 0.0), 0.0, Vec3(0.0, 0.0, 0.0))
+end
+
+struct SceneList <: SceneObject
+    objects::Vector{SceneObject}
+
+    function SceneList(objs::Vector{SceneObject})
+        new(objs)
+    end
+end
+
+SceneList() = SceneList(Vector{SceneObject}())
+
+function push!(scenelist::SceneList, object::SceneObject)
+    push!(scenelist.objects, object)
+end
+
+struct Sphere{T <: AbstractFloat} <: SceneObject
     center::Vec3{T}
     radius::T
 
@@ -49,7 +84,7 @@ function Sphere(c::Vec3{T}, r::T) where T
     Sphere{T}(c, r)
 end
 
-function hit(sphere::Sphere, ray::Ray)
+function hit!(sphere::Sphere, ray::Ray, t_min, t_max, record::HitRecord)
     # bhaskara
     oc = ray.origin - sphere.center
     a = normsquared(ray.direction)
@@ -58,8 +93,40 @@ function hit(sphere::Sphere, ray::Ray)
     discriminant = halfb*halfb - a*c
 
     if discriminant < 0
-        - 1.0
+        return false
     else
-        (-halfb - √discriminant) / a
+        sqrd = √discriminant
+        t = (-halfb - sqrd) /a
+        if t < t_min || t > t_max
+            t = (-halfb + sqrd) /a
+            if t < t_min || t > t_max
+                return false
+            end
+        end
+        record.t = t
+        record.p = rayat(ray, t)
+        outward_normal = unitvector(record.p - sphere.center)
+        front_face = dot(ray.direction, outward_normal) < 0
+        record.normal = front_face ? outward_normal : -outward_normal
+        true
     end
+end
+
+function hit!(scenelist::SceneList, ray::Ray, t_min, t_max, record::HitRecord)
+    hitanything = false
+    temprecord = HitRecord()
+    closestsofar = t_max
+
+    for object in scenelist.objects
+        if hit!(object, ray::Ray, t_min, closestsofar, temprecord)
+            hitanything = true
+            closestsofar = temprecord.t
+
+            record.p = temprecord.p
+            record.t = temprecord.t
+            record.normal = temprecord.normal
+        end
+    end
+
+    hitanything
 end
