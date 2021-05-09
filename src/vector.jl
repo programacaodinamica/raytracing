@@ -130,3 +130,7 @@ function hit!(scenelist::SceneList, ray::Ray, t_min, t_max, record::HitRecord)
 
     hitanything
 end
+
+function reflect(dir::Vec3, normal::Vec3)
+    dir -  2.0 * dot(dir, normal) * normal
+end
