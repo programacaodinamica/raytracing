@@ -50,7 +50,7 @@ mutable struct HitRecord{T <: AbstractFloat}
     material::Material
 
     function HitRecord{T}(p::Vec3{T}, t::T, n::Vec3{T}) where T <: AbstractFloat
-        new(p, t, n, false, Metal(RGB(0.0, 0.0, 0.0)))
+        new(p, t, n, false, Metal(RGB(0.0, 0.0, 0.0), 0.0))
     end
 end
 
@@ -147,10 +147,11 @@ end
 
 struct Metal <: Material
     albedo::RGB
+    fuzz::Float64
 end
 
 function scatter(material::Metal, ray::Ray, record::HitRecord)
-    reflecteddir = reflect(ray.direction, record.normal)
+    reflecteddir = reflect(ray.direction, record.normal) + material.fuzz * random_insphere()
     shouldscatter = dot(reflecteddir, record.normal) > 0
     shouldscatter, material.albedo, reflecteddir
 end
@@ -158,4 +159,30 @@ end
 
 function *(c1::RGB, c2::RGB)
     RGB(c1.r*c2.r, c1.g*c2.g, c1.b*c2.b)
+end
+
+struct Lambertian <: Material
+    albedo::RGB
+end
+
+function random_unitvector()
+    θ = rand(0.0:0.001:2*π)
+    ϕ = rand(0.0:0.001:π)
+    Vec3(cos(θ)*sin(ϕ), sin(θ)*sin(ϕ), cos(ϕ))
+end
+
+function random_insphere()
+    θ = rand(0.0:0.001:2*π)
+    ϕ = rand(0.0:0.001:π)
+    r = rand()
+    r * Vec3(cos(θ)*sin(ϕ), sin(θ)*sin(ϕ), cos(ϕ))
+end
+
+function scatter(material::Lambertian, ray::Ray, record::HitRecord)
+    scatterdir = record.normal + random_unitvector()
+    if all(map( x -> isapprox(x, 0; atol=1e-8), scatterdir))
+        scatterdir = record.normal
+    end
+    
+    true, material.albedo, scatterdir
 end
