@@ -28,30 +28,35 @@ function marscolor(dir)
     (1-t)RGB(0.9, 0.8, 0.7) + t*RGB(0.2, 0.05, 0.05)
 end
 
-function raycolor(ray::Ray, scenelist::SceneList)
+function raycolor(ray::Ray, scenelist::SceneList, depth::Int)
     record = HitRecord()
 
-    if hit!(scenelist, ray, 0.0001, Inf, record)
-        color = 0.5 * (record.normal .+ 1.0)
-        return RGB(color...)
+    if depth ≤ 0
+        return RGB(0.0, 0.0, 0.0)
     end
+    if hit!(scenelist, ray, 0.0001, Inf, record)
 
-    # orgn = ray.origin
-    # dir = ray.direction
-    # while hit!(scenelist, Ray(orgn, dir), 0.0001, Inf, record)
-    #     dir = unitvector(reflect(dir, record.normal))
-    #     orgn = record.p
-    # end
+        # preciso saber se devo lançar um novo raio
+        shouldscatter, attenuation, direction = scatter(record.material, ray, record)
+        if shouldscatter
+            # saber que cor está atenuando
+            newray = Ray(record.p, direction)
+            return attenuation * raycolor(newray, scenelist, depth-1)
+        else
+            return RGB(0.0 , 0.0, 0.0)
+        end   
+    end
     
     backgroundcolor(ray.direction)
 end
 
-s1 = Sphere(Vec3(0.0, 0.0, -1.0), 0.5)
+s1 = Sphere(Vec3(0.0, 0.0, -1.0), 0.5, Metal(RGB(1.0, 1.0, 1.0)))
 # s2 = Sphere(Vec3(-1.0, 0.0, -2.0), 0.5)
 # s3 = Sphere(Vec3(0.5, 1.5, -1.5), 0.5)
 # s4 = Sphere(Vec3(2.5, 0.2, -1.0), 0.5)
 bigradius = 100.0
-floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0), bigradius)
+floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0), 
+                bigradius, Metal(RGB(0.0, 0.5, 0.0)))
 
 world = SceneList()
 push!(world, s1)
@@ -60,7 +65,7 @@ push!(world, s1)
 # push!(world, s4)
 push!(world, floor)
 
-function render(samples_perpixel=100)
+function render(samples_perpixel=100, maxdepth=50)
     image = RGB.(zeros(imheight, imwidth))
     @showprogress 1 "Computing..." for j = 1:imheight
         for i = 1:imwidth
@@ -70,7 +75,7 @@ function render(samples_perpixel=100)
                 v = 1.0 - (j - 1 + rand()) / (imheight - 1)
                 dir = lowerleftcorner + u*horizontal + v*vertical - origin
                 ray = Ray(origin, dir)
-                pixelcolor += raycolor(ray, world)
+                pixelcolor += raycolor(ray, world, maxdepth)
             end
             image[j, i] = pixelcolor / samples_perpixel
         end
@@ -78,6 +83,6 @@ function render(samples_perpixel=100)
     image
 end
 
-frame = render()
-save("rendered/AAimagem9.png", frame)
+frame = render(100)
+save("rendered/imagem10.png", frame)
 
