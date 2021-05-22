@@ -1,10 +1,12 @@
 using Images
 using ProgressMeter
+using LinearAlgebra
+
 include("vector.jl")
 
 # IMAGE
 aspectratio = 16 / 9
-imwidth = 400
+imwidth = 800
 imheight = trunc(Int64, imwidth / aspectratio)
 
 # CAMERA
@@ -17,29 +19,36 @@ imheight = trunc(Int64, imwidth / aspectratio)
 # lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
 
 struct Camera
+    # origin
+    lookfrom::Vec3
     horizontal::Vec3
     vertical::Vec3
     lowerleftcorner::Vec3
-    origin::Vec3
-    function Camera(vfov)
+
+    function Camera(vfov, lookfrom::Vec3, lookat::Vec3, up::Vec3)
+        
+        w = unitvector(lookfrom - lookat)
+        u = unitvector(cross(up, w))
+        v = cross(w, u)
+
         θ = deg2rad(vfov)
         h = tan(θ/2)
         viewportheight = 2.0 * h
         viewportwidth = viewportheight * aspectratio
-        horizontal = Vec3(viewportwidth, 0.0, 0.0)
-        vertical = Vec3(0.0, viewportheight, 0.0)
-        focallenght = 1.0
-        origin = Vec3(0.0, 0.0, 0.0)
-        lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
-        new(horizontal, vertical, lowerleftcorner, origin)
+
+        horizontal = u * viewportwidth
+        vertical = v * viewportheight
+        
+        lowerleftcorner = lookfrom - horizontal/2 - vertical/2 - w
+        new(lookfrom, horizontal, vertical, lowerleftcorner)
     end
 end
 
 function getray(camera, s, t)
     hor = camera.horizontal
     vert = camera.vertical
-    dir = camera.lowerleftcorner + s*hor + t*vert - camera.origin
-    Ray(camera.origin, dir)
+    dir = camera.lowerleftcorner + s*hor + t*vert - camera.lookfrom
+    Ray(camera.lookfrom, dir)
 end
 
 println("Image size $imwidth x $imheight")
@@ -104,11 +113,14 @@ floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0),
 world = SceneList()
 push!(world, s1)
 push!(world, s2)
-push!(world, s3)
+# push!(world, s3)
 # push!(world, s4)
 push!(world, floor)
 
-camera = Camera(45)
+lookfrom = Vec3(-3.0, 0.0, 1.0)
+lookat = Vec3(0.0, 0.0, -1.0)
+up = Vec3(0.0, 1.0, 0.0)
+camera = Camera(90, lookfrom, lookat, up)
 
 function render(samples_perpixel=100, maxdepth=50)
     image = RGB.(zeros(imheight, imwidth))
@@ -127,6 +139,6 @@ function render(samples_perpixel=100, maxdepth=50)
     gammacorrection.(image)
 end
 
-frame = render(50)
-save("rendered/imagem14.png", frame)
+frame = render(100)
+save("rendered/imagem18.png", frame)
 
