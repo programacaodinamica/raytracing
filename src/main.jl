@@ -24,8 +24,13 @@ struct Camera
     horizontal::Vec3
     vertical::Vec3
     lowerleftcorner::Vec3
+    lensradius::AbstractFloat
+    u::Vec3
+    v::Vec3
+    w::Vec3
 
-    function Camera(vfov, lookfrom::Vec3, lookat::Vec3, up::Vec3)
+    function Camera(vfov, lookfrom::Vec3, lookat::Vec3, up::Vec3, 
+                    aperture=0.0, focus_dist=1.0)
         
         w = unitvector(lookfrom - lookat)
         u = unitvector(cross(up, w))
@@ -36,19 +41,31 @@ struct Camera
         viewportheight = 2.0 * h
         viewportwidth = viewportheight * aspectratio
 
-        horizontal = u * viewportwidth
-        vertical = v * viewportheight
+        horizontal = u * viewportwidth * focus_dist
+        vertical = v * viewportheight * focus_dist
+
+        lensradius = aperture/2
         
-        lowerleftcorner = lookfrom - horizontal/2 - vertical/2 - w
-        new(lookfrom, horizontal, vertical, lowerleftcorner)
+        lowerleftcorner = lookfrom - horizontal/2 - vertical/2 - w * focus_dist
+        new(lookfrom, horizontal, vertical, lowerleftcorner, 
+        lensradius, u, v, w)
     end
+end
+
+function random_indisc()
+    θ = rand(0.0:0.001:2*π)
+    Vec3(cos(θ), sin(θ), 0.0)
 end
 
 function getray(camera, s, t)
     hor = camera.horizontal
     vert = camera.vertical
-    dir = camera.lowerleftcorner + s*hor + t*vert - camera.lookfrom
-    Ray(camera.lookfrom, dir)
+
+    rd = camera.lensradius * random_indisc()
+
+    origin = camera.lookfrom + camera.u * rd[1] + camera.v * rd[2]
+    dir = camera.lowerleftcorner + s*hor + t*vert - origin
+    Ray(origin, dir)
 end
 
 println("Image size $imwidth x $imheight")
@@ -98,12 +115,12 @@ function raycolor(ray::Ray, scenelist::SceneList, depth::Int)
 end
 
 materialfloor = Lambertian(RGB(0.8, 0.8, 0.0))
-materialcenter = Lambertian(RGB(0.7, 0.3, 0.3))
+materialcenter = Lambertian(RGB(0.1, 0.2, 0.5))
 materialleft = Metal(RGB(0.8, 0.8, 0.8), 0.3)
 materialright  = Metal(RGB(0.8, 0.6, 0.2), 1.0)
 
 s1 = Sphere(Vec3(0.0, 0.0, -1.0), 0.5, materialcenter)
-s2 = Sphere(Vec3(-1.0, 0.0, -1.0), 0.5, materialleft)
+s2 = Sphere(Vec3(-1.0, 0.0, 0.0), 0.5, materialleft)
 s3 = Sphere(Vec3(1.0, 0.0, -1.0), 0.5, materialright)
 # s4 = Sphere(Vec3(2.5, 0.2, -1.0), 0.5)
 bigradius = 100.0
@@ -113,14 +130,14 @@ floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0),
 world = SceneList()
 push!(world, s1)
 push!(world, s2)
-# push!(world, s3)
+push!(world, s3)
 # push!(world, s4)
 push!(world, floor)
 
-lookfrom = Vec3(-3.0, 0.0, 1.0)
+lookfrom = Vec3(3.0, 3.0, 2.0)
 lookat = Vec3(0.0, 0.0, -1.0)
 up = Vec3(0.0, 1.0, 0.0)
-camera = Camera(90, lookfrom, lookat, up)
+camera = Camera(20, lookfrom, lookat, up, 2.0, norm(lookfrom - lookat))
 
 function render(samples_perpixel=100, maxdepth=50)
     image = RGB.(zeros(imheight, imwidth))
@@ -139,6 +156,6 @@ function render(samples_perpixel=100, maxdepth=50)
     gammacorrection.(image)
 end
 
-frame = render(100)
-save("rendered/imagem18.png", frame)
+frame = render(120)
+save("rendered/imagem20.png", frame)
 
