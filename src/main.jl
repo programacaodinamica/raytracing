@@ -4,17 +4,43 @@ include("vector.jl")
 
 # IMAGE
 aspectratio = 16 / 9
-imwidth = 800
+imwidth = 400
 imheight = trunc(Int64, imwidth / aspectratio)
 
 # CAMERA
-viewportheight = 2.0
-viewportwidth = viewportheight * aspectratio
-horizontal = Vec3(viewportwidth, 0.0, 0.0)
-vertical = Vec3(0.0, viewportheight, 0.0)
-focallenght = 1.0
-origin = Vec3(0.0, 0.0, 0.0)
-lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
+# viewportheight = 2.0
+# viewportwidth = viewportheight * aspectratio
+# horizontal = Vec3(viewportwidth, 0.0, 0.0)
+# vertical = Vec3(0.0, viewportheight, 0.0)
+# focallenght = 1.0
+# origin = Vec3(0.0, 0.0, 0.0)
+# lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
+
+struct Camera
+    horizontal::Vec3
+    vertical::Vec3
+    lowerleftcorner::Vec3
+    origin::Vec3
+    function Camera(vfov)
+        θ = deg2rad(vfov)
+        h = tan(θ/2)
+        viewportheight = 2.0 * h
+        viewportwidth = viewportheight * aspectratio
+        horizontal = Vec3(viewportwidth, 0.0, 0.0)
+        vertical = Vec3(0.0, viewportheight, 0.0)
+        focallenght = 1.0
+        origin = Vec3(0.0, 0.0, 0.0)
+        lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
+        new(horizontal, vertical, lowerleftcorner, origin)
+    end
+end
+
+function getray(camera, s, t)
+    hor = camera.horizontal
+    vert = camera.vertical
+    dir = camera.lowerleftcorner + s*hor + t*vert - camera.origin
+    Ray(camera.origin, dir)
+end
 
 println("Image size $imwidth x $imheight")
 
@@ -82,6 +108,8 @@ push!(world, s3)
 # push!(world, s4)
 push!(world, floor)
 
+camera = Camera(45)
+
 function render(samples_perpixel=100, maxdepth=50)
     image = RGB.(zeros(imheight, imwidth))
     @showprogress 1 "Computing..." for j = 1:imheight
@@ -90,8 +118,7 @@ function render(samples_perpixel=100, maxdepth=50)
             for n = 1:samples_perpixel
                 u = (i - 1 + rand()) / (imwidth - 1)
                 v = 1.0 - (j - 1 + rand()) / (imheight - 1)
-                dir = lowerleftcorner + u*horizontal + v*vertical - origin
-                ray = Ray(origin, dir)
+                ray = getray(camera, u, v)
                 pixelcolor += raycolor(ray, world, maxdepth)
             end
             image[j, i] = clamp(pixelcolor / samples_perpixel)
@@ -100,6 +127,6 @@ function render(samples_perpixel=100, maxdepth=50)
     gammacorrection.(image)
 end
 
-frame = render(100)
-save("rendered/imagem13.png", frame)
+frame = render(50)
+save("rendered/imagem14.png", frame)
 
