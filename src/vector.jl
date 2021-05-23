@@ -111,7 +111,7 @@ function hit!(sphere::Sphere, ray::Ray, t_min, t_max, record::HitRecord)
         end
         record.t = t
         record.p = rayat(ray, t)
-        outward_normal = unitvector(record.p - sphere.center)
+        outward_normal = (record.p - sphere.center) / sphere.radius
         record.frontface = dot(ray.direction, outward_normal) < 0
         record.normal = record.frontface ? outward_normal : -outward_normal
         record.material = sphere.material
@@ -185,4 +185,40 @@ function scatter(material::Lambertian, ray::Ray, record::HitRecord)
     end
     
     true, material.albedo, scatterdir
+end
+
+struct Dieletric <: Material
+    refraction_index::AbstractFloat
+end
+
+function refract(dir::Vec3, normal::Vec3, refractionratio)
+    cosθ = dot(-dir, normal)
+    perp = refractionratio * (dir + cosθ*normal)
+    parallel = - sqrt(1 - normsquared(perp)) * normal
+    perp + parallel
+end
+
+function reflectance(cosine, refidx)
+    # Use Schlick's approximation for reflectance.
+    r0 = (1-refidx) / (1+refidx)
+    r0 = r0*r0
+    r0 + (1-r0)*((1 - cosine)^5)
+end
+
+function scatter(material::Dieletric, ray::Ray, record::HitRecord)
+    ir = material.refraction_index
+    refractionratio = record.frontface ? 1.0/ir : ir
+
+    cosθ = dot(-ray.direction, record.normal)
+    sinθ = sqrt(1 - cosθ^2)
+
+    cannotrefract = refractionratio * sinθ > 1.0
+
+    scatterdir = if cannotrefract || reflectance(cosθ, refractionratio) > rand()
+        reflect(ray.direction, record.normal)
+    else
+        refract(ray.direction, record.normal, refractionratio)
+    end
+    
+    true, RGB(1.0, 1.0, 1.0), scatterdir
 end

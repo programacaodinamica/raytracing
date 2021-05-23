@@ -9,14 +9,6 @@ aspectratio = 16 / 9
 imwidth = 800
 imheight = trunc(Int64, imwidth / aspectratio)
 
-# CAMERA
-# viewportheight = 2.0
-# viewportwidth = viewportheight * aspectratio
-# horizontal = Vec3(viewportwidth, 0.0, 0.0)
-# vertical = Vec3(0.0, viewportheight, 0.0)
-# focallenght = 1.0
-# origin = Vec3(0.0, 0.0, 0.0)
-# lowerleftcorner = origin - horizontal/2 - vertical/2 - Vec3(0.0, 0.0, focallenght)
 
 struct Camera
     # origin
@@ -119,10 +111,13 @@ materialcenter = Lambertian(RGB(0.1, 0.2, 0.5))
 materialleft = Metal(RGB(0.8, 0.8, 0.8), 0.3)
 materialright  = Metal(RGB(0.8, 0.6, 0.2), 1.0)
 
+glass = Dieletric(1.5)
+
 s1 = Sphere(Vec3(0.0, 0.0, -1.0), 0.5, materialcenter)
-s2 = Sphere(Vec3(-1.0, 0.0, 0.0), 0.5, materialleft)
+s2 = Sphere(Vec3(-1.0, 0.0, -1.0), 0.5, glass)
+s4 = Sphere(Vec3(-1.0, 0.0, -1.0), -0.4, glass)
 s3 = Sphere(Vec3(1.0, 0.0, -1.0), 0.5, materialright)
-# s4 = Sphere(Vec3(2.5, 0.2, -1.0), 0.5)
+
 bigradius = 100.0
 floor = Sphere(Vec3(0.0, -bigradius - 0.5, -1.0), 
                 bigradius, materialfloor)
@@ -131,13 +126,13 @@ world = SceneList()
 push!(world, s1)
 push!(world, s2)
 push!(world, s3)
-# push!(world, s4)
+push!(world, s4)
 push!(world, floor)
 
-lookfrom = Vec3(3.0, 3.0, 2.0)
+lookfrom = Vec3(0.0, 0.0, 0.0)
 lookat = Vec3(0.0, 0.0, -1.0)
 up = Vec3(0.0, 1.0, 0.0)
-camera = Camera(20, lookfrom, lookat, up, 2.0, norm(lookfrom - lookat))
+camera = Camera(90, lookfrom, lookat, up, 0.0, norm(lookfrom - lookat))
 
 function render(samples_perpixel=100, maxdepth=50)
     image = RGB.(zeros(imheight, imwidth))
@@ -156,6 +151,6 @@ function render(samples_perpixel=100, maxdepth=50)
     gammacorrection.(image)
 end
 
-frame = render(120)
-save("rendered/imagem20.png", frame)
+frame = render(100)
+save("rendered/imagem22.png", frame)
 
